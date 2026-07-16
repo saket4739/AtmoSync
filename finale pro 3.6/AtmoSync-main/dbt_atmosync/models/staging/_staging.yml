@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: atmosync_raw
+    schema: main
+    tables:
+      - name: sensor_data
+        description: "Raw IoT sensor events, written by streaming/consumer.py from the Kafka topic."
+      - name: markets
+        description: "Candidate delivery markets a container could be rerouted to."
+      - name: commodity_prices
+        description: "Per-commodity, per-market price snapshots (mocked pricing feed)."
+
+models:
+  - name: stg_sensor_data
+    description: "Cleaned, typed view over the raw sensor_data stream."
+    columns:
+      - name: id
+        description: "Primary key from the raw table."
+      - name: container_id
+        description: "Shipping container identifier."

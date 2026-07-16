@@ -1,0 +1,27 @@
+# dbt profile for the AtmoSync project.
+#
+# By default dbt looks for this file at ~/.dbt/profiles.yml. For local dev,
+# either copy this file there, or run dbt with:
+#   dbt run --profiles-dir .
+# from inside the dbt_atmosync/ folder.
+#
+# schemas_and_paths points at the SAME atmosync.db file that the Kafka
+# consumer (streaming/consumer.py) writes sensor_data into, so dbt
+# transforms read live data without any extra copy step.
+#
+# MIGRATION NOTE: when moving to Snowflake, replace this whole file with a
+# `type: snowflake` profile (account/user/password/role/database/warehouse/
+# schema) — none of the model SQL in models/ needs to change beyond minor
+# dialect tweaks noted in each model file.
+
+atmosync:
+  target: dev
+  outputs:
+    dev:
+      type: sqlite
+      threads: 1
+      database: 'atmosync'
+      schema: 'main'
+      schemas_and_paths:
+        main: '../atmosync.db'
+      schema_directory: '../'

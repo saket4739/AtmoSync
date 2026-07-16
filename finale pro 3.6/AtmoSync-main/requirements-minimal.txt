@@ -1,0 +1,5 @@
+kafka-python==3.0.7
+dbt-core==1.11.11
+dbt-sqlite==1.10.0
+python-dotenv==1.2.2
+flask==3.1.2

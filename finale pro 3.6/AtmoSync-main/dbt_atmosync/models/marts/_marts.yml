@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: spoilage_degradation
+    description: "Cumulative spoilage curve per container, one row per sensor reading."
+    columns:
+      - name: container_id
+        description: "Shipping container identifier."
+      - name: quality_remaining_pct
+        description: "Estimated % of commodity quality remaining, 0-100."
+
+  - name: spoilage_arbitrage
+    description: >
+      Trader-facing table: for each container's latest reading, the price
+      and net arbitrage value at every candidate market, with a
+      reroute_recommended flag. This is the table Superset reads from.
+    columns:
+      - name: container_id
+        description: "Shipping container identifier."
+      - name: net_arbitrage_value_per_kg
+        description: "Price advantage of this market vs primary, discounted by remaining quality."
+      - name: reroute_recommended
+        description: "1 if rerouting to this market is recommended given current quality and price advantage."

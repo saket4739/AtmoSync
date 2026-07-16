@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AtmoSync — Control Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #0a1420;
+    --bg-deep: #060d16;
+    --panel: #101d2e;
+    --panel-line: #1c2e45;
+    --text: #e8eef7;
+    --muted: #7d8fa6;
+    --cyan: #4cc9f0;
+    --cyan-dim: #245a70;
+    --amber: #f2a541;
+    --red: #e5484d;
+    --green: #3ecf8e;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at top left, rgba(76,201,240,0.06), transparent 55%),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+    color:var(--text);
+    font-family:var(--body);
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  a{color:inherit;}
+
+  /* ---- Top bar ---- */
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:22px 32px;
+    border-bottom:1px solid var(--panel-line);
+    background:rgba(6,13,22,0.6);
+    backdrop-filter:blur(6px);
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+  .brand{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .brand-mark{
+    font-family:var(--display);
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:0.5px;
+  }
+  .brand-mark span{color:var(--cyan);}
+  .brand-sub{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+  }
+  .status-pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--muted);
+  }
+  .dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 8px var(--green);
+    animation:pulse 2s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{opacity:1;} 50%{opacity:0.35;}
+  }
+
+  .wrap{max-width:1280px;margin:0 auto;padding:32px;}
+
+  .section-label{
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--cyan);
+    margin:0 0 14px 2px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .section-label::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--panel-line);
+  }
+
+  /* ---- Container grid ---- */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));
+    gap:18px;
+    margin-bottom:44px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:20px;
+    cursor:pointer;
+    transition:border-color .15s ease, transform .15s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .card:hover{
+    border-color:var(--cyan-dim);
+    transform:translateY(-2px);
+  }
+  .card.selected{
+    border-color:var(--cyan);
+    box-shadow:0 0 0 1px var(--cyan), 0 0 24px rgba(76,201,240,0.15);
+  }
+  .card-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:16px;
+  }
+  .container-id{
+    font-family:var(--mono);
+    font-size:15px;
+    font-weight:600;
+    letter-spacing:0.5px;
+  }
+  .risk-badge{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    padding:3px 8px;
+    border-radius:4px;
+  }
+  .risk-LOW, .tier-GOOD{background:rgba(62,207,142,0.12); color:var(--green); border:1px solid rgba(62,207,142,0.3);}
+  .risk-MEDIUM, .tier-FAIR{background:rgba(242,165,65,0.12); color:var(--amber); border:1px solid rgba(242,165,65,0.3);}
+  .risk-HIGH, .tier-POOR, .tier-SPOILED{background:rgba(229,72,77,0.12); color:var(--red); border:1px solid rgba(229,72,77,0.3);}
+
+  /* ---- Decay gauge (signature element) ---- */
+  .gauge-row{
+    display:flex;
+    align-items:center;
+    gap:16px;
+    margin-bottom:16px;
+  }
+  .gauge{
+    width:76px;
+    height:76px;
+    flex-shrink:0;
+  }
+  .gauge-value{
+    font-family:var(--mono);
+    font-size:22px;
+    font-weight:600;
+  }
+  .gauge-label{
+    font-family:var(--mono);
+    font-size:10px;
+    color:var(--muted);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    margin-top:2px;
+  }
+
+  .stat-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:12px;
+    border-top:1px solid var(--panel-line);
+    padding-top:14px;
+  }
+  .stat{
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .stat-label{color:var(--muted); font-size:10px; letter-spacing:0.5px; text-transform:uppercase;}
+  .stat-val{font-size:13px;}
+  .stat-val.warn{color:var(--amber);}
+  .stat-val.danger{color:var(--red);}
+
+  /* ---- Detail / chart panel ---- */
+  .detail{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:24px;
+    margin-bottom:44px;
+  }
+  .detail-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+  }
+  .detail-title{
+    font-family:var(--display);
+    font-size:17px;
+    font-weight:600;
+  }
+  .detail-title span{color:var(--cyan); font-family:var(--mono); font-weight:400; font-size:13px;}
+  canvas{max-height:280px;}
+
+  /* ---- Reroute table ---- */
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:var(--mono);
+    font-size:13px;
+  }
+  th{
+    text-align:left;
+    color:var(--muted);
+    font-size:10px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    font-weight:500;
+    padding:10px 14px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  td{
+    padding:12px 14px;
+    border-bottom:1px solid rgba(28,46,69,0.5);
+  }
+  tr.recommend td:first-child{
+    border-left:2px solid var(--green);
+  }
+  .go-tag{
+    font-size:10px;
+    letter-spacing:1px;
+    padding:2px 7px;
+    border-radius:4px;
+    background:rgba(62,207,142,0.12);
+    color:var(--green);
+    border:1px solid rgba(62,207,142,0.3);
+  }
+  .hold-tag{
+    font-size:10px;
+    letter-spacing:1px;
+    padding:2px 7px;
+    border-radius:4px;
+    background:rgba(125,143,166,0.1);
+    color:var(--muted);
+    border:1px solid var(--panel-line);
+  }
+  .empty{
+    font-family:var(--mono);
+    color:var(--muted);
+    font-size:13px;
+    padding:30px 0;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-mark">Atmo<span>Sync</span></div>
+    <div class="brand-sub">Cold Chain Control Deck</div>
+  </div>
+  <div class="status-pill">
+    <div class="dot"></div>
+    <span id="last-updated">Reading atmosync.db</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="section-label">Fleet — live readings</div>
+  <div class="grid" id="container-grid"></div>
+
+  <div class="detail" id="detail-panel" style="display:none;">
+    <div class="detail-head">
+      <div class="detail-title">Decay curve — <span id="detail-container">—</span></div>
+    </div>
+    <canvas id="decay-chart"></canvas>
+  </div>
+
+  <div class="section-label">Reroute opportunities</div>
+  <div class="detail" style="padding:0; overflow-x:auto;">
+    <table id="arbitrage-table">
+      <thead>
+        <tr>
+          <th>Container</th>
+          <th>Quality</th>
+          <th>Market</th>
+          <th>Price / kg</th>
+          <th>Advantage</th>
+          <th>Net value / kg</th>
+          <th>Call</th>
+        </tr>
+      </thead>
+      <tbody id="arbitrage-body">
+        <tr><td colspan="7" class="empty">No arbitrage data yet — run dbt to build spoilage_arbitrage.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+let selectedContainer = null;
+let decayChart = null;
+
+function riskClass(risk){
+  return 'risk-' + (risk || 'LOW').toUpperCase();
+}
+function tierClass(tier){
+  return 'tier-' + (tier || 'GOOD').toUpperCase();
+}
+
+function drawGauge(canvas, pct){
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const cx = w/2, cy = h/2, r = w/2 - 6;
+  const start = Math.PI * 0.75, end = Math.PI * 2.25;
+  const span = end - start;
+
+  // track
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, end);
+  ctx.strokeStyle = '#1c2e45';
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // value arc
+  const value = Math.max(0, Math.min(100, pct)) / 100;
+  let color = '#3ecf8e';
+  if(pct < 60) color = '#e5484d';
+  else if(pct < 85) color = '#f2a541';
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, start, start + span*value);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 7;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+function cardHTML(c){
+  const quality = c.quality_remaining_pct != null ? c.quality_remaining_pct : 100;
+  const tier = c.quality_tier || 'GOOD';
+  return `
+    <div class="card" data-id="${c.container_id}">
+      <div class="card-head">
+        <div class="container-id">${c.container_id}</div>
+        <div class="risk-badge ${tierClass(tier)}">${tier}</div>
+      </div>
+      <div class="gauge-row">
+        <canvas class="gauge" width="76" height="76" data-quality="${quality}"></canvas>
+        <div>
+          <div class="gauge-value">${quality.toFixed ? quality.toFixed(1) : quality}%</div>
+          <div class="gauge-label">Quality remaining</div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Temp</div>
+          <div class="stat-val ${c.temperature > 8 ? 'warn' : ''}">${c.temperature}°C</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Humidity</div>
+          <div class="stat-val">${c.humidity}%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Vibration</div>
+          <div class="stat-val ${c.vibration > 3 ? 'warn' : ''}">${c.vibration} g</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Door</div>
+          <div class="stat-val">${c.door_status}</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadContainers(){
+  const res = await fetch('/api/containers');
+  const data = await res.json();
+  const grid = document.getElementById('container-grid');
+
+  if(!data.ok || data.containers.length === 0){
+    grid.innerHTML = `<div class="empty">No sensor data yet — start the simulator and consumer to stream readings.</div>`;
+    return;
+  }
+
+  grid.innerHTML = data.containers.map(cardHTML).join('');
+
+  // draw gauges
+  grid.querySelectorAll('.gauge').forEach(canvas => {
+    drawGauge(canvas, parseFloat(canvas.dataset.quality));
+  });
+
+  // click to select
+  grid.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => selectContainer(card.dataset.id));
+    if(card.dataset.id === selectedContainer) card.classList.add('selected');
+  });
+
+  if(!selectedContainer && data.containers.length){
+    selectContainer(data.containers[0].container_id);
+  }
+
+  document.getElementById('last-updated').textContent =
+    'Last synced ' + new Date().toLocaleTimeString();
+}
+
+async function selectContainer(id){
+  selectedContainer = id;
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.toggle('selected', c.dataset.id === id);
+  });
+  document.getElementById('detail-container').textContent = id;
+  document.getElementById('detail-panel').style.display = 'block';
+
+  const res = await fetch(`/api/history/${id}`);
+  const data = await res.json();
+  const points = data.points || [];
+
+  const labels = points.map(p => p.reading_seq);
+  const values = points.map(p => p.quality_remaining_pct);
+
+  const ctx = document.getElementById('decay-chart').getContext('2d');
+  if(decayChart) decayChart.destroy();
+  decayChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Quality remaining %',
+        data: values,
+        borderColor: '#4cc9f0',
+        backgroundColor: 'rgba(76,201,240,0.08)',
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7d8fa6', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#1c2e45' } },
+        y: { ticks: { color: '#7d8fa6', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#1c2e45' }, min: 0, max: 100 }
+      }
+    }
+  });
+}
+
+async function loadArbitrage(){
+  const res = await fetch('/api/arbitrage');
+  const data = await res.json();
+  const body = document.getElementById('arbitrage-body');
+
+  if(!data.ok || data.rows.length === 0){
+    body.innerHTML = `<tr><td colspan="7" class="empty">No arbitrage data yet — run dbt to build spoilage_arbitrage.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = data.rows.map(r => `
+    <tr class="${r.reroute_recommended ? 'recommend' : ''}">
+      <td>${r.container_id}</td>
+      <td>${r.quality_remaining_pct != null ? r.quality_remaining_pct.toFixed(1) : '—'}% <span style="color:var(--muted)">(${r.quality_tier || ''})</span></td>
+      <td>${r.market_name}</td>
+      <td>₹${r.price_per_kg}</td>
+      <td>₹${r.price_advantage_per_kg}</td>
+      <td>₹${r.net_arbitrage_value_per_kg}</td>
+      <td>${r.reroute_recommended ? '<span class="go-tag">REROUTE</span>' : '<span class="hold-tag">HOLD</span>'}</td>
+    </tr>
+  `).join('');
+}
+
+function refresh(){
+  loadContainers();
+  loadArbitrage();
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+
+</body>
+</html>
